@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import sys, re, configparser
+import re, configparser, argparse
 
 ## Regular expressions
 pLTK = re.compile('"LTK".+:(.+)')
@@ -9,8 +9,15 @@ pEDIV = re.compile('"EDIV".+:(.+)')
 pIRK = re.compile('"IRK".+:(.+)')
 pCSRK= re.compile('"CSRK".+:(.+)')
 
+inputParser = argparse.ArgumentParser(description='Dual Boot BLT Mouse)')
+inputParser.add_argument('-w', '--win-file', dest='winFile', help='Windows Reg File', required=True)
+inputParser.add_argument('-l', '--linux-file', dest='linFile', help='Linux BLT File', required=True)
+
+arguments = vars(inputParser.parse_args())
+
+
 ## Opens the source file and gets the values
-with open (sys.argv[1], 'r') as f:
+with open (arguments['winFile'], 'r') as f:
     for line in f.readlines():
         if pLTK.search(line):
             LTK = pLTK.search(line).group(1)
@@ -45,15 +52,16 @@ with open (sys.argv[1], 'r') as f:
 config = configparser.ConfigParser()
 # preserve case for letters
 config.optionxform = lambda option: option
-config.read(sys.argv[2])
+config.read(arguments['linFile'])
 config.set('LongTermKey', 'Key', LTK)
 config.set('LongTermKey', 'Rand', ERand)
 config.set('LongTermKey','EDiv', EDIV)
 config.set('IdentityResolvingKey', 'Key', IRK)
 config.set('LocalSignatureKey', 'Key', CSRK)
 
-with open(sys.argv[2],'w') as config_file:
-   config.write(config_file)
+with open(arguments['linFile'],'w') as config_file:
+   # remove white space delimiters (key=value)
+   config.write(config_file, space_around_delimiters=False)
 
 
 print(LTK)
