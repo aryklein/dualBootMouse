@@ -38,7 +38,7 @@ How to use this Python script
 7) With ```root``` privileges, run the Python script:
 
 ```
-$ sudo dualBootMouse -w BTKeys.txt -l /var/lib/bluetooth/xx:xx:xx:xx:xx:xx/xx:xx:xx:xx:xx:xx/info
+$ sudo ./dualBootMouse -w BTKeys.txt -l /var/lib/bluetooth/xx:xx:xx:xx:xx:xx/xx:xx:xx:xx:xx:xx/info
 ```
 
 8) The script will change the file with the same Windows keys. Reboot and it will work.
