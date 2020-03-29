@@ -1,72 +1,42 @@
 #!/usr/bin/python
 
-import re, configparser, argparse
+import re
+import configparser
+import argparse
+import sys
 
-## Regular expressions
-pLTK = re.compile('"LTK".+:(.+)')
-pERand = re.compile('"ERand".+:(.+)')
-pEDIV = re.compile('"EDIV".+:(.+)')
-pIRK = re.compile('"IRK".+:(.+)')
-pCSRK= re.compile('"CSRK".+:(.+)')
+linuxKey = ''
 
-inputParser = argparse.ArgumentParser(description='Dual Boot BLT Mouse)')
-inputParser.add_argument('-w', '--win-file', dest='winFile', help='Windows Reg File', required=True)
-inputParser.add_argument('-l', '--linux-file', dest='linFile', help='Linux BLT File', required=True)
+inputParser = argparse.ArgumentParser(description='Dual Boot Bluetooth Mouse)')
+inputParser.add_argument('-w', '--win-file', dest='winFile', help='Windows registry file', required=True)
+inputParser.add_argument('-l', '--linux-file', dest='linuxFile', help='Linux Bluetooth info file', required=True)
+inputParser.add_argument('-m', '--mac', dest='mac', help='Mouse MAC address', required=True)
 
 arguments = vars(inputParser.parse_args())
 
+# validate MAC address format
+if not re.match("[0-9a-f]{2}([-:]?)[0-9a-f]{2}(\\1[0-9a-f]{2}){4}$", arguments['mac'].lower()):
+    print('Error: wrong MAC address format')
+    sys.exit(1)
 
-## Opens the source file and gets the values
-with open (arguments['winFile'], 'r') as f:
+## get the Bluetooth key from the Windows registry file
+with open (arguments['winFile'], 'r', encoding='utf-16') as f:
     for line in f.readlines():
-        if pLTK.search(line):
-            LTK = pLTK.search(line).group(1)
-            # Lower case to upper case and no comma
-            LTK = LTK.replace(',','').upper()
+        if arguments['mac'].replace(':','').lower() in line.lower():
+            winKey = re.search('=hex:(.+)', line).group(1)
+            linuxKey = winKey.replace(',','').upper()
 
-        elif pERand.search(line):
-            ERand = pERand.search(line).group(1)
-            # Convert to list and revert the order
-            ERand = ERand.split(',')[::-1]
-            # Convert the list string again
-            ERand = ''.join(ERand)
-            # Convert to decimal
-            ERand = str(int(ERand, 16))
+    if not linuxKey:
+        print('Error: Mouse MAC address was not found in the Windows registry file.')
+        sys.exit(1)
 
-        elif pEDIV.search(line):
-            EDIV = pEDIV.search(line).group(1)
-            # Convert to decimal
-            EDIV = str(int(EDIV, 16))
-
-        elif pIRK.search(line):
-            IRK = pIRK.search(line).group(1)
-            # Lower case to upper case and no comma
-            IRK = IRK.replace(',','').upper()
-
-        elif pCSRK.search(line):
-            CSRK = pCSRK.search(line).group(1)
-            CSRK = CSRK.replace(',','').upper()
-
-
-## Opens the destination file and writes the values
+## write Windows key in the Linux file
 config = configparser.ConfigParser()
 # preserve case for letters
 config.optionxform = lambda option: option
-config.read(arguments['linFile'])
-config.set('LongTermKey', 'Key', LTK)
-config.set('LongTermKey', 'Rand', ERand)
-config.set('LongTermKey','EDiv', EDIV)
-config.set('IdentityResolvingKey', 'Key', IRK)
-config.set('LocalSignatureKey', 'Key', CSRK)
-
-with open(arguments['linFile'],'w') as config_file:
+config.read(arguments['linuxFile'])
+config.set('LinkKey', 'Key', linuxKey)
+with open(arguments['linuxFile'],'w') as linuxFile:
    # remove white space delimiters (key=value)
-   config.write(config_file, space_around_delimiters=False)
-
-
-print(LTK)
-print(ERand)
-print(EDIV)
-print(IRK)
-print(CSRK)
-
+   config.write(linuxFile, space_around_delimiters=False)
+   print('File changed. Restart bluetooth service.')
